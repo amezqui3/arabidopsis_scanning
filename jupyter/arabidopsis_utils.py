@@ -133,16 +133,18 @@ def fill_component(comp, x=True, y=True, z=True):
 
     return rcomp
 
-def collapse_dimensions(img):
+# same as above function, except take the max along each axis instead of the sum
+def collapse_dimensions_max(img):
     snaps = []
     for i in range(img.ndim):
-        snaps.append(np.sum(img, axis=i))
+        snaps.append(np.max(img, axis=i))
     return snaps
 
-def plot_collapse_dimensions(snaps, bname='bname', tissue='tissue', display=False, writefig=False, dst='./'):
+# edit this function so that vmin and vmax can be specified while plotting
+def plot_collapse_dimensions(snaps, bname='bname', tissue='tissue', display=False, writefig=False, dst='./', vmin = None, vmax = None):
     fig, ax = plt.subplots(1,len(snaps),figsize=(6*len(snaps),6))
     for i in range(len(snaps)):
-        ax[i].imshow(snaps[i], cmap='inferno', origin='lower');
+        ax[i].imshow(snaps[i], cmap='inferno', origin='lower', vmin = vmin, vmax = vmax);
     plt.suptitle(bname + ' ' + tissue + ' collapse', fontsize=20);
     plt.tight_layout()
 
@@ -151,7 +153,6 @@ def plot_collapse_dimensions(snaps, bname='bname', tissue='tissue', display=Fals
         plt.savefig(filename, dpi=96, format='jpg', pil_kwargs={'optimize':True}, bbox_inches='tight');
         if not display:
             plt.close();
-
 ########################################################################
 ########################################################################
 
