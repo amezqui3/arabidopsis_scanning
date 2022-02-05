@@ -133,6 +133,12 @@ def fill_component(comp, x=True, y=True, z=True):
 
     return rcomp
 
+def collapse_dimensions(img):
+    snaps = []
+    for i in range(img.ndim):
+        snaps.append(np.sum(img, axis=i))
+    return snaps
+
 # same as above function, except take the max along each axis instead of the sum
 def collapse_dimensions_max(img):
     snaps = []
@@ -153,6 +159,7 @@ def plot_collapse_dimensions(snaps, bname='bname', tissue='tissue', display=Fals
         plt.savefig(filename, dpi=96, format='jpg', pil_kwargs={'optimize':True}, bbox_inches='tight');
         if not display:
             plt.close();
+    return fig, ax
 ########################################################################
 ########################################################################
 
