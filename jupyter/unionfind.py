@@ -99,8 +99,8 @@ class UnionFind:
         return self.data[self.find_parent(v)]
 
 def mergeF(a,b):
-    m,e = max((a['max'],a['elder']),(b['max'],b['elder']))
-    return {'max':m,'elder':e}
+    m,ei,ej = max((a['max'],a['elderi'],a['elderj']),(b['max'],b['elderi'],b['elderj']))
+    return {'max':m,'elderi':ei, 'elderj':ej}
 
 def persistence(f):
     """
@@ -118,21 +118,243 @@ def persistence(f):
         `pairs`: list of tuples (persistence, death, birth). A connected-component
         with infinite persistence is appended at the end.
     """
-    fi = sorted(list(zip(f,range(len(f)))),reverse=True)
+    fi = []
+    for i in range(f.shape[0]):
+        for j in range(f.shape[1]):
+            fi.append((f[i,j],i,j))
+    fi = sorted(fi, reverse=True)
+    
     uf = UnionFind(mergeF)
     pairs = []
-    for v,i in fi:
-        uf.add(i,{'max':v,'elder':i})
-        if i-1 in uf.V and i+1 in uf.V:
-            a = uf.getData(i-1)
-            b = uf.getData(i+1)
-            d,j = min((a['max'],a['elder']),(b['max'],b['elder']))
-            pairs.append((d-v,i,j))
-        if i-1 in uf.V:
-            uf.merge(i-1,i)
-        if i+1 in uf.V:
-            uf.merge(i,i+1)
-    pairs.append((float('inf'),None,fi[0][1]))
+    for v, i, j in fi:
+        uf.add((i,j),{'max':v,'elderi':i, 'elderj':j})
+        
+        top = (i-1, j)
+        bot = (i+1, j)
+        lef = (i, j-1)
+        rig = (i, j+1)
+        
+        topb = top in uf.V
+        botb = bot in uf.V
+        lefb = lef in uf.V
+        rigb = rig in uf.V
+
+        if topb:
+            topp = uf.find_parent(top)
+            topd = uf.getData(top)
+            
+        if lefb:
+            lefp = uf.find_parent(lef)
+            lefd = uf.getData(lef)
+            
+        if botb:
+            botp = uf.find_parent(bot)
+            botd = uf.getData(bot)
+            
+        if rigb:
+            rigp = uf.find_parent(rig)
+            rigd = uf.getData(rig)
+            
+        if topb:
+            uf.merge(top, (i,j))
+        if lefb:
+            uf.merge(lef, (i,j))
+        if botb:
+            uf.merge((i,j), bot)
+        if rigb:
+            uf.merge((i,j), rig)
+            
+        
+        if lefb and rigb and ~topb and ~botb:
+            if lefp != rigp:
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif ~lefb and ~rigb and topb and botb:
+            if topp != botp:
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif ~lefb and rigb and topb and ~botb:
+            if rigp != topp:
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (topd['max'],topd['elderi'],topd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif lefb and ~rigb and topb and ~botb:
+            if lefp != topp:
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (topd['max'],topd['elderi'],topd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif lefb and ~rigb and ~topb and botb:
+            if lefp != botp:
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif ~lefb and rigb and ~topb and botb:
+            if rigp != botp:
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif lefb and rigb and topb and ~botb:
+            if (lefp != rigp) and (rigp != topp) and (topp != lefp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (topd['max'],topd['elderi'],topd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefp != rigp) and (rigp != topp) and (topp == lefp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefp != rigp) and (rigp == topp) and (topp != lefp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefp == rigp) and (rigp != topp) and (topp != lefp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+        
+        elif lefb and ~rigb and topb and botb:
+            if (lefp != topp) and (topp != botp) and (botp != lefp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (lefd['max'],lefd['elderi'],lefd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp != topp) and (topp != botp) and (botp == lefp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp != topp) and (topp == botp) and (botp != lefp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (lefd['max'],lefd['elderi'],lefd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp == topp) and (topp != botp) and (botp != lefp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+        elif lefb and rigb and ~topb and botb:
+            if (lefp != rigp) and (rigp != botp) and (botp != lefp):
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (lefd['max'],lefd['elderi'],lefd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp != rigp) and (rigp != botp) and (botp == lefp):
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp != rigp) and (rigp == botp) and (botp != lefp):
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (lefd['max'],lefd['elderi'],lefd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefp == rigp) and (rigp != botp) and (botp != lefp):
+                d,ki,kj = min((rigd['max'], rigd['elderi'], rigd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+        elif ~lefb and rigb and topb and botb:
+            if (rigp != topp) and (topp != botp) and (botp != rigp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (rigp != topp) and (topp != botp) and (botp == rigp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (rigp != topp) and (topp == botp) and (botp != rigp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (rigp == topp) and (topp != botp) and (botp != rigp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+        elif lefb and rigb and topb and botb:
+            if (lefb != rigb) and (rigp != topp) and (topp != botp) and (botp != lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp != topp) and (topp != botp) and (botp != lefp) and (left != topp) and (rigp == botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefb != rigb) and (rigp != topp) and (topp != botp) and (botp == lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp != topp) and (topp == botp) and (botp != lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp != topp) and (topp != botp) and (botp != lefp) and (left == topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp == topp) and (topp != botp) and (botp != lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((botd['max'], botd['elderi'], botd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb == rigb) and (rigp != topp) and (topp != botp) and (botp != lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (topd['max'],topd['elderi'],topd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefb != rigb) and (rigp == topp) and (topp != botp) and (botp == lefp) and (left != topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp != topp) and (topp != botp) and (botp != lefp) and (left == topp) and (rigp == botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp != topp) and (topp == botp) and (botp == lefp) and (left == topp) and (rigp != botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb != rigb) and (rigp == topp) and (topp == botp) and (botp != lefp) and (left != topp) and (rigp == botp):
+                d,ki,kj = min((lefd['max'], lefd['elderi'], lefd['elderj']), (rigd['max'],rigd['elderi'],rigd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+            
+            elif (lefb == rigb) and (rigp == topp) and (topp != botp) and (botp != lefp) and (left == topp) and (rigp != botp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+            elif (lefb == rigb) and (rigp != topp) and (topp != botp) and (botp == lefp) and (left != topp) and (rigp == botp):
+                d,ki,kj = min((topd['max'], topd['elderi'], topd['elderj']), (botd['max'],botd['elderi'],botd['elderj']))
+                pairs.append((d-v, (i,j), (ki,kj)))
+                
+                
+    pairs.append((float('inf'),None,(fi[0][1], fi[0][2])))
+    
     return pairs
 
 def rel_persistence(f,threshold=1e4):
